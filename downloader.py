@@ -14,10 +14,10 @@ class Month:
         validate_input(value: str)
             Makes sure user input month is valid
 
-        number()
+        number() -> int
             Returns month number: 1, 2, 3, ..., 12
 
-        name()
+        name() -> str
             Returns month name: January, February, ..., December
     '''
 
@@ -51,22 +51,22 @@ class ImageDownloader:
     '''Class to represent downloader for images.
 
     Methods
-        validate_input(value: str)
+        validate_input(value:str) -> str
             Makes sure user input resolution is valid
 
-        get_url(url:str, month_number:int, month_name, year)
+        get_url(url:str, month_number:int, month_name, year) -> str
             Creates url of required form for further request
 
-        make_request(url:str)
+        make_request(url:str) -> requests.models.Response
             Makes HTTP GET request to given url
 
-        get_image_links(content: bytes)
+        get_image_links(content: bytes) -> List[str]
             Parses page for links with required resolution
 
-        create_directory(basic_directory:str, month_name:str, year:int)
+        create_directory(basic_directory:str, month_name:str, year:int) -> str
             Creates directory to store downloaded files
 
-        download_image(storage_path:str, link:str)
+        download_image(storage_path:str, link:str) -> bool
             Makes request to given link, than downloads image from link
     '''
 
@@ -81,7 +81,7 @@ class ImageDownloader:
 
     def get_url(self, url, month_number, month_name, year):
         # Convert month number. Value for request must have value
-        # (month_number - 2) and form: '01', '02',.. '12'
+        # (month_number - 1) and form: '01', '02',.. '12'
         month_number_str = str(range(1, 13)[month_number - 2])
         if len(month_number_str) == 2:
             converted_month_number = month_number_str
@@ -93,7 +93,6 @@ class ImageDownloader:
             str(year),
             converted_month_number,
             month_name.lower(),
-            # str(year)
         )
         return url
 
