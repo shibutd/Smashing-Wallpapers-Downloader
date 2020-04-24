@@ -6,9 +6,10 @@ name = "pypi"
 [packages]
 requests = "*"
 bs4 = "*"
-wget = "*"
 click = "*"
 lxml = "*"
+aiohttp = "*"
+aiofiles = "*"
 
 [requires]
 python_version = "3.7"

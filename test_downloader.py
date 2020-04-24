@@ -9,7 +9,7 @@ class MissingInputTests(unittest.TestCase):
     runner = CliRunner()
 
     def test_only_resolution_input(self):
-        '''Test if we can't launch program with only resolution input'''
+        '''Ensure if we can't launch program with only resolution input'''
         test_cases = ['-r 64x64', '-r 1280x1024', '--resolution 1920x1080']
         for x in test_cases:
             with self.subTest(x=x):
@@ -20,7 +20,7 @@ class MissingInputTests(unittest.TestCase):
                 self.assertEqual(2, result.exit_code)
 
     def test_only_month_input(self):
-        '''Test if we can't launch program with only month input'''
+        '''Ensure if we can't launch program with only month input'''
         test_cases = ['-m may', '-m 5', '--month December']
         for x in test_cases:
             with self.subTest(x=x):
@@ -31,7 +31,7 @@ class MissingInputTests(unittest.TestCase):
                 self.assertEqual(2, result.exit_code)
 
     def test_only_year_input(self):
-        '''Test if we can't launch program with only year input'''
+        '''Ensure if we can't launch program with only year input'''
         test_cases = ['-y 2013', '--year 2019']
         for x in test_cases:
             with self.subTest(x=x):
@@ -46,7 +46,7 @@ class InvalidInputTests(unittest.TestCase):
     runner = CliRunner()
 
     def test_invalid_resolution_input(self):
-        '''Test if we can't launch program with invalid resolution input'''
+        '''Ensure if we can't launch program with invalid resolution input'''
         test_cases = [
             '-r 64x64 -m May -y 2019',
             '-r abcde -m May -y 2019',
@@ -61,7 +61,7 @@ class InvalidInputTests(unittest.TestCase):
                 self.assertEqual(0, result.exit_code)
 
     def test_invalid_month_input(self):
-        '''Test if we can't launch program with invalid month input'''
+        '''Ensure if we can't launch program with invalid month input'''
         test_cases = [
             '-r 1280x1024 -m 0 -y 2019',
             '-r 1280x1024 -m 13 -y 2019',
@@ -76,7 +76,7 @@ class InvalidInputTests(unittest.TestCase):
                 self.assertEqual(0, result.exit_code)
 
     def test_invalid_year_input(self):
-        '''Test if we can't launch program with invalid year input'''
+        '''Ensure if we can't launch program with invalid year input'''
         test_cases = [
             '-r 1280x1024 -m May -y 12',
             '-r 1280x1024 -m May -y 2056',
@@ -92,9 +92,39 @@ class InvalidInputTests(unittest.TestCase):
                 self.assertEqual(2, result.exit_code)
 
 
+class ValidInputTests(unittest.TestCase):
+    runner = CliRunner()
+
+    @mock.patch.object(ImageDownloader, 'get_url')
+    def test_get_url_valid_input(self, *args):
+        '''Ensure if we can get valid url with valid input data'''
+        url = 'http://someurl.com/test'
+        test_cases = [
+            '-r 1280x1024 -m 1 -y 2015',
+            '-r 1280x1024 -m 12 -y 2019',
+            '-r 1920x1080 -m May -y 2015',
+            '-r 1920x1080 -m December -y 2019',
+        ]
+        for x in test_cases:
+            with self.subTest(x=x):
+                result = self.runner.invoke(main, x.split(), input='3')
+                _, res, _, month, _, year = x.split()
+                month = Month(month)
+
+                self.assertTrue(
+                    ImageDownloader.get_url.called_with(
+                        url,
+                        month.number,
+                        month.name,
+                        int(year)
+                    )
+                )
+                self.assertIn('Trying to establish connection...', result.output)
+
+
 class MonthClassTests(unittest.TestCase):
     def test_month_valid_value(self):
-        '''Test if we can create Month object with valid input'''
+        '''Ensure if we can create Month object with valid input'''
         test_cases = [
             ('may', 5, 'May'),
             ('5', 5, 'May'),
@@ -109,7 +139,7 @@ class MonthClassTests(unittest.TestCase):
                 self.assertEqual(month.name, exp_name)
 
     def test_month_invalid_value(self):
-        '''Test if we can't create Month object with invalid input'''
+        '''Ensure if we can't create Month object with invalid input'''
         test_cases = ['', '0', '13', 'Octob_er', 'Decemberex']
         for value in test_cases:
             with self.subTest(x=value):
@@ -120,7 +150,7 @@ class ImageDownloaderClassTests(unittest.TestCase):
     base_resolution = '640x480'
 
     def test_resolution_valid_value(self):
-        '''Test if we can create ImageDownloader object with valid input'''
+        '''Ensure if we can create ImageDownloader object with valid input'''
         test_cases = ['640x480', '1280x1024', '1920x1080']
         for value in test_cases:
             with self.subTest(x=value):
@@ -130,7 +160,7 @@ class ImageDownloaderClassTests(unittest.TestCase):
                 self.assertEqual(image_downloader.resolution, value)
 
     def test_resolution_invalid_value(self):
-        '''Test if we can't create ImageDownloader object with invalid input'''
+        '''Ensure if we can't create ImageDownloader object with invalid input'''
         test_cases = [
             '',
             '64x48',
@@ -144,7 +174,7 @@ class ImageDownloaderClassTests(unittest.TestCase):
                 self.assertRaises(ValueError, ImageDownloader, value)
 
     def test_getting_url(self):
-        '''Test if ImageDownloader object can return url in expected format'''
+        '''Ensure if ImageDownloader object can return url in expected format'''
         test_cases = [
             (
                 ('abc.com', 5, 'May', 2015),
@@ -156,7 +186,7 @@ class ImageDownloaderClassTests(unittest.TestCase):
             ),
             (
                 ('abc.com', 1, 'January', 2019),
-                'https://abc.com/2019/12/desktop-wallpaper-calendars-january-2019/'
+                'https://abc.com/2018/12/desktop-wallpaper-calendars-january-2019/'
             )
         ]
         image_downloader = ImageDownloader(self.base_resolution)
@@ -187,32 +217,30 @@ class ImageDownloaderClassTests(unittest.TestCase):
         raise requests.RequestException()
 
     @mock.patch('requests.get', side_effect=mocked_requests_get)
-    def test_making_request(self, mock_get):
-        '''Test if ImageDownloader object can make valid request'''
+    def test_fetching_content(self, mock_get):
+        '''Ensure if ImageDownloader object can make valid request'''
         image_downloader = ImageDownloader(self.base_resolution)
 
-        resp = image_downloader.make_request('http://someurl.com/test')
-        self.assertEqual(resp.content, 'some_data')
-        self.assertEqual(resp.status_code, 200)
+        resp = image_downloader.fetch_content('http://someurl.com/test')
+        self.assertEqual(resp, 'some_data')
 
-        resp = image_downloader.make_request('http://someotherurl.com/test')
-        self.assertEqual(resp.content, 'other_data')
-        self.assertEqual(resp.status_code, 200)
+        resp = image_downloader.fetch_content('http://someotherurl.com/test')
+        self.assertEqual(resp, 'other_data')
 
         with self.assertRaises(Exception) as err:
-            image_downloader.make_request('http://nonexistenturl.com/test')
+            image_downloader.fetch_content('http://nonexistenturl.com/test')
         self.assertIn('Error', err.exception.args[0])
 
         with self.assertRaises(Exception) as err:
-            image_downloader.make_request('http://unabletoconnecturl.com/test')
+            image_downloader.fetch_content('http://unabletoconnecturl.com/test')
         self.assertIn('Connection timed out', err.exception.args)
 
         with self.assertRaises(Exception) as err:
-            image_downloader.make_request('http://otherunknownurl.com/test')
+            image_downloader.fetch_content('http://otherunknownurl.com/test')
         self.assertIn('Unable to establish connection', err.exception.args)
 
     def test_getting_image_links(self):
-        '''Test if ImageDownloader object can return links from html content'''
+        '''Ensure if ImageDownloader object can return links from html content'''
         response_content = '''
         <a href=http://files.com/wallpapers/cal/may-19-hello-spring-cal-800x480.png \
 title="Hello Spring! - 800x480">800x480</a>,<a href=http://files.com/wallpapers/nocal\
@@ -241,7 +269,7 @@ title="Hello Spring! - 1024x768">1024x768</a>'''
 
     @mock.patch('downloader.os')
     def test_creating_directory(self, mock_os):
-        '''Test if ImageDownloader object can create directory'''
+        '''Ensure if ImageDownloader object can create directory'''
         base_directory, month, year = '/', 'may', 2015
         directory_name = 'Smashing_wallpaper_{0}_{1}'.format(month, str(year))
 
@@ -254,24 +282,6 @@ title="Hello Spring! - 1024x768">1024x768</a>'''
                 exist_ok=True
             )
         )
-
-    @mock.patch('requests.get', side_effect=mocked_requests_get)
-    @mock.patch('downloader.os')
-    @mock.patch('__main__.open')
-    def test_downloading_image(self, mock_open, mock_os, mocked_requests_get):
-        '''Test if ImageDownloader object can download file'''
-        pass
-        # storage_path = '/'
-
-        # link = 'http://nonexistenturl.com/test'
-        # self.assertFalse(
-        #     ImageDownloader(self.base_resolution).download_image(storage_path, link))
-
-        # link = 'http://someurl.com/test'
-        # ImageDownloader(self.base_resolution).download_image(storage_path, link)
-
-        # self.assertTrue(mock_open.called_with(
-        #     mock_os.path.join(storage_path, 'test'), 'wb'))
 
 
 if __name__ == '__main__':
