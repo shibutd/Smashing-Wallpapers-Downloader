@@ -96,7 +96,7 @@ class ValidInputTests(unittest.TestCase):
     runner = CliRunner()
 
     @mock.patch.object(ImageDownloader, 'get_url')
-    def test_get_url_valid_input(self, *args):
+    def test_get_url_valid_input(self, mock_get_url):
         '''Ensure if we can get valid url with valid input data'''
         url = 'http://someurl.com/test'
         test_cases = [
@@ -112,7 +112,8 @@ class ValidInputTests(unittest.TestCase):
                 month = Month(month)
 
                 self.assertTrue(
-                    ImageDownloader.get_url.called_with(
+                    # ImageDownloader.get_url.called_with(
+                    mock_get_url.called_with(
                         url,
                         month.number,
                         month.name,
@@ -120,6 +121,36 @@ class ValidInputTests(unittest.TestCase):
                     )
                 )
                 self.assertIn('Trying to establish connection...', result.output)
+
+    @mock.patch.object(ImageDownloader, 'fetch_content')
+    def test_fetch_valid_input(self, mock_fetch):
+        '''Ensure if we can get valid url with valid input data'''
+        url = 'http://someurl.com/test'
+        base_resolution = '640x480'
+        test_cases = [
+            '-r 1280x1024 -m 1 -y 2015',
+            '-r 1280x1024 -m 12 -y 2019',
+            '-r 1920x1080 -m May -y 2015',
+            '-r 1920x1080 -m December -y 2019',
+        ]
+        for x in test_cases:
+            with self.subTest(x=x):
+                self.runner.invoke(main, x.split(), input='3')
+                _, res, _, month, _, year = x.split()
+                month = Month(month)
+                # image_downloader = ImageDownloader(
+                #     url, month.number, month.name, int(year))
+
+                new_url = ImageDownloader(base_resolution).get_url(
+                    url, month.number, month.name, int(year))
+
+                self.assertTrue(
+                    # ImageDownloader.get_url.called_with(
+                    mock_fetch.called_with(
+                        new_url,
+                        timeout=5
+                    )
+                )
 
 
 class MonthClassTests(unittest.TestCase):

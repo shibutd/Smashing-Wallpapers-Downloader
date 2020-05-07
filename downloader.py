@@ -1,5 +1,6 @@
 import os
 import re
+import typing
 import calendar
 import asyncio
 import click
@@ -10,24 +11,14 @@ import aiofiles
 
 
 class Month:
-    '''Class to represent month.
-
-    Methods
-        validate_input(value: str) -> str
-            Makes sure user input month is valid
-
-        number -> int
-            Returns month number: 1, 2, 3, ..., 12
-
-        name -> str
-            Returns month name: January, February, ..., December
-    '''
+    '''Class to represent month.'''
 
     def __init__(self, month):
         self._month = self.validate_input(month)
 
     @staticmethod
-    def validate_input(value):
+    def validate_input(value: str) -> str:
+        '''Make sure user input month is valid'''
         if value.isdigit() and 1 <= int(value) <= 12 or \
                 (value.isalpha() and value.lower().capitalize()
                     in list(calendar.month_name)):
@@ -35,7 +26,8 @@ class Month:
         raise ValueError('Month value is not valid', value)
 
     @property
-    def number(self):
+    def number(self) -> int:
+        '''Return month number: 1, 2, 3, ..., 12'''
         if self._month.isdigit():
             return int(self._month)
         else:
@@ -43,7 +35,8 @@ class Month:
             return list(calendar.month_name).index(month_name)
 
     @property
-    def name(self):
+    def name(self) -> str:
+        '''Return month name: January, February, ..., December'''
         if not self._month.isdigit():
             return self._month.lower().capitalize()
         else:
@@ -51,43 +44,21 @@ class Month:
 
 
 class ImageDownloader:
-    '''Class to represent downloader for images.
-
-    Methods
-        validate_input(value: str) -> str
-            Makes sure user input resolution is valid
-
-        get_url(url: str, month_number: int, month_name: str, year: int) -> str
-            Creates and returns url of required form for further request
-
-        create_directory(basic_directory: str, month_name: str, year: int) -> str
-            Creates directory to store downloaded files
-
-        fetch_content(url: str) -> bytes
-            Makes HTTP GET request to given url and return response content in bytes
-
-        get_image_links(content: bytes) -> List[str]
-            Parses page for links with required resolution and returns list of links
-
-        download_image(session: aiohttp.ClientSession, semaphore: asyncio.Semaphore,
-                       storage_path: str, link: str) -> bool
-            Download image from given link
-
-        download_all(storage_path: str, links: List[str]) -> int
-            Download images from given list of links, return number of downloaded images
-    '''
+    '''Class to represent downloader for images.'''
 
     def __init__(self, resolution):
         self.resolution = self.validate_input(resolution)
 
     @staticmethod
-    def validate_input(value):
+    def validate_input(value: str) -> str:
+        '''Make sure user input resolution is valid'''
         match = re.search('^\d{3,4}x\d{3,4}$', value)
         if match:
             return value
         raise ValueError('Resolution value is not valid', value)
 
-    def get_url(self, url, month_number, month_name, year):
+    def get_url(self, url: str, month_number: int, month_name: str, year: int) -> str:
+        '''Create and returns url of required form for further request'''
         # Convert month number. Value for request must have value
         # (month_number - 1) and form: '01', '02',.. '12'
         month_number_str = str(range(1, 13)[month_number - 2])
@@ -106,7 +77,8 @@ class ImageDownloader:
         )
         return url
 
-    def create_directory(self, basic_directory, month_name, year):
+    def create_directory(self, basic_directory: str, month_name: str, year: int) -> str:
+        '''Create directory to store downloaded files'''
         storage_path = os.path.join(
             basic_directory,
             'Smashing_wallpaper_{0}_{1}'.format(month_name, str(year))
@@ -119,7 +91,8 @@ class ImageDownloader:
         else:
             return storage_path
 
-    def fetch_content(self, url, **kwargs):
+    def fetch_content(self, url: str, **kwargs) -> bytes:
+        '''Make HTTP GET request to given url and return response content'''
         try:
             response = requests.get(url, **kwargs)
             response.raise_for_status()
@@ -132,7 +105,8 @@ class ImageDownloader:
         else:
             return response.content
 
-    def get_image_links(self, content):
+    def get_image_links(self, content: bytes) -> typing.List[str]:
+        '''Parse page for links with required resolution and returns list of links'''
         soup = BeautifulSoup(content, 'lxml')
         image_links = []
 
@@ -141,7 +115,10 @@ class ImageDownloader:
                 image_links.append(link.get('href'))
         return image_links
 
-    async def download_image(self, session, semaphore, storage_path, link):
+    async def download_image(self, session: aiohttp.ClientSession,
+                             semaphore: asyncio.Semaphore,
+                             storage_path: str, link: str) -> bool:
+        '''Download image from given link'''
         try:
             async with semaphore:
                 async with session.get(link) as response:
@@ -161,7 +138,8 @@ class ImageDownloader:
         else:
             return True
 
-    async def download_all(self, storage_path, links):
+    async def download_all(self, storage_path: str, links: typing.List[str]) -> int:
+        '''Download images from given list of links, return number of downloaded images'''
         downloaded_image_count = 0
         semaphore = asyncio.Semaphore(5)
         async with aiohttp.ClientSession() as session:
@@ -183,6 +161,7 @@ class ImageDownloader:
 @click.option('-y', '--year', type=click.IntRange(2011, 2020),
               help='Year between 2011 and 2020', required=True)
 def main(resolution, month, year):
+    '''Program for downloading files from 'www.smashingmagazine.com"'''
     # Validating values given to Month and ImangeDownloader
     try:
         month_obj = Month(month)
@@ -197,7 +176,7 @@ def main(resolution, month, year):
     # Getting url link in expected format
     url = image_downloader.get_url(URL, month_obj.number, month_obj.name, year)
 
-    # Making get request, createing storage directory for images,
+    # Making GET request, createing storage directory for images,
     # parsing html page for image links with given parameters
     try:
         content = image_downloader.fetch_content(url, timeout=5)
@@ -214,7 +193,7 @@ def main(resolution, month, year):
 
     print('Connection established, start downloading...')
 
-    # Asynchronous downloading images
+    # Asynchronously downloading images
     downloaded_image_count = asyncio.run(
         image_downloader.download_all(storage_path, image_links))
 
